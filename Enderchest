@@ -1,0 +1,98 @@
+<?php
+ 
+/**
+ * @name VirtualInventories
+ * @main VirtualInventories\Loader
+ * @version 1.0.0
+ * @api 1.12.0
+ * @description Way to open virtual custom inventories
+ * @author iksaku
+ */
+  
+namespace VirtualInventories{
+    use pocketmine\command\Command;
+    use pocketmine\command\CommandSender;
+    use pocketmine\command\PluginIdentifiableCommand;
+    use pocketmine\inventory\ChestInventory;
+    use pocketmine\nbt\tag\CompoundTag;
+    use pocketmine\nbt\tag\ListTag;
+    use pocketmine\nbt\tag\IntTag;
+    use pocketmine\nbt\tag\StringTag;
+    use pocketmine\Player;
+    use pocketmine\plugin\PluginBase;
+    use pocketmine\tile\Chest;
+    use pocketmine\tile\Tile;
+ 
+    class Loader extends PluginBase{
+        public function onEnable(){
+            $this->getServer()->getCommandMap()->register("echest", new VirtualCommand($this));
+            $this->virtualChest();
+        }
+ 
+        /** @var null|Chest */
+        private $fakeChest = null;
+ 
+        /**
+         * @return Chest
+         */
+        private function fakeChestTile(Level $level){
+            if($this->fakeChest === null){
+                $this->fakeChest = new Chest($level->getChunk(0 >> 4, 0 >> 4), new CompoundTag("VirtualChest", [
+                    new ListTag("Items", []),
+                    new StringTag("id", Tile::CHEST),
+                    new IntTag("x", 0),
+                    new IntTag("y", 0),
+                    new IntTag("z", 0)
+                ]));
+            }
+            return $this->fakeChest;
+        }
+ 
+        /** @var null|ChestInventory */
+        private $virtualChest = null;
+ 
+        /**
+         * @return ChestInventory
+         */
+        public function virtualChest(){
+            if($this->virtualChest === null){
+                $this->virtualChest = new ChestInventory($this->fakeChestTile());
+            }
+            return $this->virtualChest;
+        }
+    }
+ 
+    class VirtualCommand extends Command implements PluginIdentifiableCommand{
+        /** @var Loader */
+        private $plugin;
+ 
+        /**
+         * @param Loader $plugin
+         */
+        public function __construct(Loader $plugin){
+            parent::__construct("echest", "Opens a virtual chest", null, ["ec"]);
+            $this->plugin = $plugin;
+        }
+ 
+        /**
+         * @return Loader
+         */
+        public function getPlugin(){
+            return $this->plugin;
+        }
+ 
+        /**
+         * @param CommandSender $sender
+         * @param string $alias
+         * @param array $args
+         * @return bool
+         */
+        public function execute(CommandSender $sender, $alias, array $args){
+            if(!$sender instanceof Player){
+                return false;
+            }
+            $sender->addWindow($this->getPlugin()->virtualChest($sender->getLevel()));
+            return true;
+        }
+    }
+}
